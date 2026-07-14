@@ -10,8 +10,7 @@ body{
     margin:0;
     font-family:Arial,sans-serif;
     background:#f8d7e8;
-    background-image:url("https://i.imgur.com/9M0K6Kq.png");
-    background-repeat:repeat;
+ 
 }
 
 #header{
@@ -74,11 +73,37 @@ body{
 
 #messageInput{
     flex:1;
+#messageInput{
+    flex:1;
+}
+
+#watermark{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    font-size:60px;
+    font-weight:bold;
+    color:rgba(255,255,255,0.18);
+    z-index:0;
+    pointer-events:none;
+    white-space:nowrap;
+}
+
+#messages,
+#inputArea,
+#header,
+#replyBox{
+    position:relative;
+    z-index:1;
 }
 </style>
 </head>
 
-<body><div id="header">
+<body>
+<div id="watermark">
+    Rifat ❤️ Omi
+</div><div id="header">
     <div id="chatName">💖 Rifat ❤️ Omi</div>
     <div id="status">Offline</div>
 </div>
