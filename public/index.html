@@ -167,6 +167,9 @@ socket.on("chat message", function(data){
     messages.appendChild(li);
 
     window.scrollTo(0, document.body.scrollHeight);
+
+});
+
 window.addEventListener("focus", () => {
     socket.emit("seen all");
 });
@@ -178,7 +181,6 @@ socket.on("messages seen", () => {
     if(seen){
         seen.textContent = "✓✓ Seen";
     }
-});
 });
 </script>
 
