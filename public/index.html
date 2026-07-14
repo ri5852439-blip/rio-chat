@@ -1,16 +1,33 @@
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RIO v2</title>
+<title>RIO</title>
 
 <style>
 body{
     margin:0;
     font-family:Arial,sans-serif;
     background:#f8d7e8;
- 
+}
+
+#watermark{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    font-size:60px;
+    font-weight:bold;
+    color:rgba(255,255,255,0.18);
+    pointer-events:none;
+    z-index:0;
+}
+
+#loginBox{
+    text-align:center;
+    margin-top:120px;
 }
 
 #header{
@@ -21,13 +38,8 @@ body{
     background:#ff69b4;
     color:white;
     padding:15px;
-    z-index:1000;
-    box-shadow:0 2px 5px rgba(0,0,0,.2);
-}
-
-#chatName{
-    font-size:20px;
-    font-weight:bold;
+    z-index:10;
+    display:none;
 }
 
 #status{
@@ -35,10 +47,13 @@ body{
 }
 
 #messages{
-    margin-top:90px;
-    margin-bottom:120px;
     list-style:none;
     padding:15px;
+    margin-top:90px;
+    margin-bottom:100px;
+    display:none;
+    position:relative;
+    z-index:1;
 }
 
 #messages li{
@@ -59,98 +74,114 @@ body{
     margin-left:auto;
 }
 
+#replyBox{
+    display:none;
+    background:#ffd6e7;
+    padding:10px;
+}
+
 #inputArea{
+    display:none;
     position:fixed;
     bottom:0;
     left:0;
     right:0;
     background:white;
     padding:10px;
-    display:flex;
     gap:10px;
     align-items:center;
+    z-index:10;
 }
 
 #messageInput{
     flex:1;
-#messageInput{
-    flex:1;
+    padding:10px;
 }
 
-#watermark{
-    position:fixed;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    font-size:60px;
-    font-weight:bold;
-    color:rgba(255,255,255,0.18);
-    z-index:0;
-    pointer-events:none;
-    white-space:nowrap;
-}
-
-#messages,
-#inputArea,
-#header,
-#replyBox{
-    position:relative;
-    z-index:1;
+button{
+    padding:10px;
 }
 </style>
 </head>
 
 <body>
-<div id="watermark">
-    Rifat ❤️ Omi
-</div><div id="header">
-    <div id="chatName">💖 Rifat ❤️ Omi</div>
+
+<div id="watermark">Rifat ❤️ Omi</div>
+
+<div id="loginBox">
+    <h2>💖 RIO Login 💖</h2>
+
+    <input id="loginUser" placeholder="Username">
+    <br><br>
+
+    <input id="loginPass" type="password" placeholder="Password">
+    <br><br>
+
+    <button id="loginBtn">Login</button>
+</div>
+
+<div id="header">
+    <div><b>💖 Rifat ❤️ Omi</b></div>
     <div id="status">Offline</div>
 </div>
 
 <ul id="messages"></ul>
 
-<div id="replyBox" style="display:none;padding:10px;background:#ffd6e7;">
-    <strong>Replying to:</strong>
+<div id="replyBox">
+    Replying to:
     <span id="replyText"></span>
-
-    <button id="cancelReply">
-        Cancel
-    </button>
+    <button id="cancelReply">Cancel</button>
 </div>
 
 <div id="inputArea">
-
     <div id="typingStatus"></div>
+    <input id="messageInput" placeholder="Type a message...">
+    <button id="sendBtn">Send</button>
+</div>
 
-    <input
-        id="messageInput"
-        placeholder="Type a message..."
-        style="width:80%;padding:10px;"
-    >
-
-    <button id="sendBtn">
-        Send
-    </button>
-
-</div><script src="/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
-
 const socket = io();
+let lastMessageElement = null;
+
+let currentUser = "";
+let replyingTo = null;
+let typingTimer;
 
 const messages = document.getElementById("messages");
 const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
-const typingStatus = document.getElementById("typingStatus");
-const statusText = document.getElementById("status");
 
-let replyingTo = null;
-let typingTimer;sendBtn.onclick = () => {
+document.getElementById("loginBtn").onclick = () => {
+
+    const user = document.getElementById("loginUser").value;
+    const pass = document.getElementById("loginPass").value;
+
+    if(
+        (user === "Rifat" && pass === "rifat123") ||
+        (user === "Omi" && pass === "omi123")
+    ){
+
+        currentUser = user;
+socket.emit("seen all");
+socket.emit("seen all");
+
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("header").style.display = "block";
+        document.getElementById("messages").style.display = "block";
+        document.getElementById("inputArea").style.display = "flex";
+
+    }else{
+        alert("Wrong username or password");
+    }
+};
+
+document.getElementById("sendBtn").onclick = () => {
 
     if(messageInput.value.trim() === "") return;
 
     socket.emit("chat message", {
+        user: currentUser,
         text: messageInput.value,
         reply: replyingTo,
         time: new Date().toLocaleTimeString()
@@ -159,61 +190,107 @@ let typingTimer;sendBtn.onclick = () => {
     messageInput.value = "";
 
     replyingTo = null;
-
     document.getElementById("replyBox").style.display = "none";
 };
 
 messageInput.addEventListener("input", () => {
 
-    socket.emit("typing", "typing");
+    socket.emit("typing", currentUser);
 
     clearTimeout(typingTimer);
 
     typingTimer = setTimeout(() => {
         socket.emit("stop typing");
     }, 1500);
+});
 
-});socket.on("typing", () => {
-    typingStatus.textContent = "Typing...";
+socket.on("typing", (name) => {
+    document.getElementById("typingStatus").textContent =
+        name + " is typing...";
 });
 
 socket.on("stop typing", () => {
-    typingStatus.textContent = "";
+    document.getElementById("typingStatus").textContent = "";
 });
 
 socket.on("online count", (count) => {
 
-    if(count > 1){
-        statusText.textContent = "Online";
-    }else{
-        statusText.textContent = "Offline";
-    }
+    document.getElementById("status").textContent =
+        count > 1 ? "Online" : "Offline";
+});
+socket.on("load messages", (allMessages) => {
 
-});socket.on("chat message", (data) => {
+    messages.innerHTML = "";
+
+    allMessages.forEach((data) => {
+
+        const li = document.createElement("li");
+
+        if(data.reply){
+            li.innerHTML =
+                "<div style='font-size:12px;background:#ffe4f1;padding:5px;margin-bottom:5px'>" +
+                data.reply +
+                "</div>";
+        }
+
+        li.innerHTML +=
+            "<b>" + data.user + "</b><br>" +
+            data.text +
+            "<br><small>" + data.time + "</small>";
+
+        li.className =
+            data.user === currentUser ? "right" : "left";
+
+        li.onclick = () => {
+
+            replyingTo = data.user + ": " + data.text;
+
+            document.getElementById("replyText").textContent =
+                replyingTo;
+
+            document.getElementById("replyBox").style.display =
+                "block";
+        };
+
+        messages.appendChild(li);
+
+if(data.user === currentUser){
+    const status = document.createElement("div");
+    status.style.fontSize = "12px";
+    status.textContent = "✓ Sent";
+
+    li.appendChild(status);
+
+    lastMessageElement = status;
+}
+
+    });
+
+});
+socket.on("chat message", (data) => {
 
     const li = document.createElement("li");
 
     if(data.reply){
         li.innerHTML =
-        "<div style='font-size:12px;background:#ffe4f1;padding:5px;border-left:3px solid hotpink;margin-bottom:5px'>" +
-        data.reply +
-        "</div>";
+            "<div style='font-size:12px;background:#ffe4f1;padding:5px;margin-bottom:5px'>" +
+            data.reply +
+            "</div>";
     }
 
     li.innerHTML +=
+        "<b>" + data.user + "</b><br>" +
         data.text +
-        "<br><small>" +
-        data.time +
-        "</small>";
+        "<br><small>" + data.time + "</small>";
 
-    li.className = "right";
+    li.className =
+        data.user === currentUser ? "right" : "left";
 
     li.onclick = () => {
-
-        replyingTo = data.text;
+        replyingTo = data.user + ": " + data.text;
 
         document.getElementById("replyText").textContent =
-            data.text;
+            replyingTo;
 
         document.getElementById("replyBox").style.display =
             "block";
@@ -221,16 +298,32 @@ socket.on("online count", (count) => {
 
     messages.appendChild(li);
 
-    window.scrollTo(
-        0,
-        document.body.scrollHeight
-    );
-});document.getElementById("cancelReply").onclick = () => {
+if(data.user === currentUser){
+    const status = document.createElement("div");
+    status.style.fontSize = "12px";
+    status.textContent = "✓ Sent";
+
+    li.appendChild(status);
+
+    lastMessageElement = status;
+}
+
+    window.scrollTo(0, document.body.scrollHeight);
+});
+socket.on("messages seen", () => {
+
+    if(lastMessageElement){
+        lastMessageElement.textContent = "✓✓ Seen";
+    }
+
+});
+document.getElementById("cancelReply").onclick = () => {
 
     replyingTo = null;
 
     document.getElementById("replyBox").style.display = "none";
-};</script>
+};
+</script>
 
 </body>
 </html>
