@@ -76,6 +76,7 @@ if(password !== "omi123"){
 <br><br>
 
 <ul id="messages"></ul>
+<div id="seenStatus"></div>
 
 <div id="replyBox" style="display:none;background:#ffd6e7;padding:10px;margin:10px 0;border-radius:10px;">
     <strong>Replying to:</strong>
@@ -166,6 +167,18 @@ socket.on("chat message", function(data){
     messages.appendChild(li);
 
     window.scrollTo(0, document.body.scrollHeight);
+window.addEventListener("focus", () => {
+    socket.emit("seen all");
+});
+
+socket.on("messages seen", () => {
+
+    const seen = document.getElementById("seenStatus");
+
+    if(seen){
+        seen.textContent = "✓✓ Seen";
+    }
+});
 });
 </script>
 
