@@ -22,6 +22,11 @@ h2{
     border-radius:10px;
 }
 
+#onlineStatus,#typingStatus{
+    margin:10px 0;
+    font-weight:bold;
+}
+
 #messages{
     list-style:none;
     padding:0;
@@ -52,13 +57,30 @@ button{
 
 <body>
 
+<script>
+const password = prompt("Enter Password");
+
+if(password !== "omi123"){
+    document.write("<h1>Access Denied</h1>");
+    throw new Error("Wrong password");
+}
+</script>
+
 <h2>💖 RIO 💖</h2>
+
+<div id="onlineStatus">🟢 Online: 0</div>
+<div id="typingStatus"></div>
 
 <input id="username" placeholder="Your Name">
 
 <br><br>
 
 <ul id="messages"></ul>
+
+<div id="replyBox" style="display:none;background:#ffd6e7;padding:10px;margin:10px 0;border-radius:10px;">
+    <strong>Replying to:</strong>
+    <span id="replyText"></span>
+</div>
 
 <form id="form">
     <input id="messageInput" placeholder="Type a message...">
@@ -74,29 +96,72 @@ const form = document.getElementById("form");
 const input = document.getElementById("messageInput");
 const username = document.getElementById("username");
 const messages = document.getElementById("messages");
+const onlineStatus = document.getElementById("onlineStatus");
+const typingStatus = document.getElementById("typingStatus");
+
+let replyingTo = null;
 
 form.addEventListener("submit", function(e){
     e.preventDefault();
 
     if(input.value){
+
         socket.emit("chat message",{
             user: username.value || "Anonymous",
-            text: input.value
+            text: input.value,
+            reply: replyingTo
         });
+
+        replyingTo = null;
+        document.getElementById("replyBox").style.display = "none";
 
         input.value = "";
     }
+});
+
+input.addEventListener("input", function(){
+    socket.emit("typing", username.value || "Someone");
+});
+
+socket.on("typing", function(name){
+    typingStatus.textContent = name + " is typing...";
+});
+
+socket.on("stop typing", function(){
+    typingStatus.textContent = "";
+});
+
+socket.on("online count", function(count){
+    onlineStatus.textContent = "🟢 Online: " + count;
 });
 
 socket.on("chat message", function(data){
 
     const li = document.createElement("li");
 
-    li.innerHTML =
+    if(data.reply){
+        li.innerHTML =
+        "<div style='background:#f3d4e4;padding:6px;border-left:4px solid hotpink;border-radius:6px;margin-bottom:6px;font-size:14px'>" +
+        data.reply +
+        "</div>";
+    }
+
+    li.innerHTML +=
         "<strong>" +
         data.user +
         ":</strong> " +
         data.text;
+
+    li.onclick = function(){
+
+        replyingTo = data.user + ": " + data.text;
+
+        document.getElementById("replyText").textContent =
+            replyingTo;
+
+        document.getElementById("replyBox").style.display =
+            "block";
+    };
 
     messages.appendChild(li);
 
