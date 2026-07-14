@@ -3,162 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RIO</title>
+<title>RIO v2</title>
 
 <style>
 body{
+    margin:0;
     font-family:Arial,sans-serif;
-    max-width:700px;
-    margin:auto;
-    padding:15px;
-    background:#ece5dd;
+    background:#f8d7e8;
 }
 
-h2{
-    text-align:center;
+#header{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
     background:#ff69b4;
     color:white;
-    padding:12px;
-    border-radius:10px;
+    padding:15px;
+    z-index:1000;
+    box-shadow:0 2px 5px rgba(0,0,0,.2);
 }
 
-#onlineStatus,#typingStatus{
-    margin:10px 0;
+#chatName{
+    font-size:20px;
     font-weight:bold;
 }
 
+#status{
+    font-size:14px;
+}
+
 #messages{
+    margin-top:90px;
+    margin-bottom:120px;
     list-style:none;
-    padding:0;
+    padding:15px;
 }
 
 #messages li{
+    max-width:70%;
     padding:10px;
     margin:8px 0;
     border-radius:12px;
+    word-wrap:break-word;
+}
+
+.left{
     background:white;
+    margin-right:auto;
 }
 
-form{
-    display:flex;
-    gap:8px;
+.right{
+    background:#ffb6d9;
+    margin-left:auto;
 }
 
-#messageInput{
-    flex:1;
+#inputArea{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:white;
     padding:10px;
-}
-
-button{
-    padding:10px 15px;
 }
 </style>
 </head>
 
-<body>
-
-<script>
-const password = prompt("Enter Password");
-
-if(password !== "omi123"){
-    document.write("<h1>Access Denied</h1>");
-    throw new Error("Wrong password");
-}
-</script>
-
-<h2>💖 RIO 💖</h2>
-
-<div id="onlineStatus">🟢 Online: 0</div>
-<div id="typingStatus"></div>
-
-<input id="username" placeholder="Your Name">
-
-<br><br>
-
-<ul id="messages"></ul>
-<div id="seenStatus"></div>
-
-<div id="replyBox" style="display:none;background:#ffd6e7;padding:10px;margin:10px 0;border-radius:10px;">
-    <strong>Replying to:</strong>
-    <span id="replyText"></span>
+<body><div id="header">
+    <div id="chatName">💖 Rifat ❤️ Omi</div>
+    <div id="status">Offline</div>
 </div>
 
-<form id="form">
-    <input id="messageInput" placeholder="Type a message...">
-    <button type="submit">Send</button>
-</form>
+<ul id="messages"></ul>
 
-<script src="/socket.io/socket.io.js"></script>
+<div id="replyBox" style="display:none;padding:10px;background:#ffd6e7;">
+    <strong>Replying to:</strong>
+    <span id="replyText"></span>
+
+    <button id="cancelReply">
+        Cancel
+    </button>
+</div>
+
+<div id="inputArea">
+
+    <div id="typingStatus"></div>
+
+    <input
+        id="messageInput"
+        placeholder="Type a message..."
+        style="width:80%;padding:10px;"
+    >
+
+    <button id="sendBtn">
+        Send
+    </button>
+
+</div><script src="/socket.io/socket.io.js"></script>
 
 <script>
+
 const socket = io();
 
-const form = document.getElementById("form");
-const input = document.getElementById("messageInput");
-const username = document.getElementById("username");
 const messages = document.getElementById("messages");
-const onlineStatus = document.getElementById("onlineStatus");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
 const typingStatus = document.getElementById("typingStatus");
+const statusText = document.getElementById("status");
 
 let replyingTo = null;
+let typingTimer;
 
-form.addEventListener("submit", function(e){
-    e.preventDefault();
+</script>sendBtn.onclick = () => {
 
-    if(input.value){
+    if(messageInput.value.trim() === "") return;
 
-        socket.emit("chat message",{
-            user: username.value || "Anonymous",
-            text: input.value,
-            reply: replyingTo
-        });
+    socket.emit("chat message", {
+        text: messageInput.value,
+        reply: replyingTo,
+        time: new Date().toLocaleTimeString()
+    });
 
-        replyingTo = null;
-        document.getElementById("replyBox").style.display = "none";
+    messageInput.value = "";
 
-        input.value = "";
-    }
+    replyingTo = null;
+
+    document.getElementById("replyBox").style.display = "none";
+};
+
+messageInput.addEventListener("input", () => {
+
+    socket.emit("typing", "typing");
+
+    clearTimeout(typingTimer);
+
+    typingTimer = setTimeout(() => {
+        socket.emit("stop typing");
+    }, 1500);
+
+});socket.on("typing", () => {
+    typingStatus.textContent = "Typing...";
 });
 
-input.addEventListener("input", function(){
-    socket.emit("typing", username.value || "Someone");
-});
-
-socket.on("typing", function(name){
-    typingStatus.textContent = name + " is typing...";
-});
-
-socket.on("stop typing", function(){
+socket.on("stop typing", () => {
     typingStatus.textContent = "";
 });
 
-socket.on("online count", function(count){
-    onlineStatus.textContent = "🟢 Online: " + count;
-});
+socket.on("online count", (count) => {
 
-socket.on("chat message", function(data){
+    if(count > 1){
+        statusText.textContent = "Online";
+    }else{
+        statusText.textContent = "Offline";
+    }
+
+});socket.on("chat message", (data) => {
 
     const li = document.createElement("li");
 
     if(data.reply){
         li.innerHTML =
-        "<div style='background:#f3d4e4;padding:6px;border-left:4px solid hotpink;border-radius:6px;margin-bottom:6px;font-size:14px'>" +
+        "<div style='font-size:12px;background:#ffe4f1;padding:5px;border-left:3px solid hotpink;margin-bottom:5px'>" +
         data.reply +
         "</div>";
     }
 
     li.innerHTML +=
-        "<strong>" +
-        data.user +
-        ":</strong> " +
-        data.text;
+        data.text +
+        "<br><small>" +
+        data.time +
+        "</small>";
 
-    li.onclick = function(){
+    li.className = "right";
 
-        replyingTo = data.user + ": " + data.text;
+    li.onclick = () => {
+
+        replyingTo = data.text;
 
         document.getElementById("replyText").textContent =
-            replyingTo;
+            data.text;
 
         document.getElementById("replyBox").style.display =
             "block";
@@ -166,23 +189,16 @@ socket.on("chat message", function(data){
 
     messages.appendChild(li);
 
-    window.scrollTo(0, document.body.scrollHeight);
+    window.scrollTo(
+        0,
+        document.body.scrollHeight
+    );
+});document.getElementById("cancelReply").onclick = () => {
 
-});
+    replyingTo = null;
 
-window.addEventListener("focus", () => {
-    socket.emit("seen all");
-});
-
-socket.on("messages seen", () => {
-
-    const seen = document.getElementById("seenStatus");
-
-    if(seen){
-        seen.textContent = "✓✓ Seen";
-    }
-});
-</script>
+    document.getElementById("replyBox").style.display = "none";
+};</script>
 
 </body>
 </html>
